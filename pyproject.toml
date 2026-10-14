@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sca"
+version = "0.1.0"
+description = "Static code quality analyzer for C"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+sca = "sca.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sca*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

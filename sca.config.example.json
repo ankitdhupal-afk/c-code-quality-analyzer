@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "fail_on": "error",
+  "include": ["**/*.c"],
+  "exclude": ["tests/**", "build/**"],
+  "rules": {
+    "function-too-long":   {"enabled": true, "severity": "warning", "max_lines": 50},
+    "deep-nesting":        {"enabled": true, "severity": "warning", "max_depth": 4},
+    "too-many-params":     {"enabled": true, "severity": "warning", "max_params": 5},
+    "magic-number":        {"enabled": true, "severity": "info", "allowed": [0, 1, -1, 2]},
+    "naming-convention":   {"enabled": true, "severity": "info",
+                            "function": "^[a-z][a-z0-9_]*$",
+                            "variable": "^[a-z][a-z0-9_]*$",
+                            "constant": "^[A-Z][A-Z0-9_]*$"},
+    "unsafe-function":     {"enabled": true, "severity": "warning",
+                            "banned": ["gets", "strcpy", "strcat", "sprintf"]},
+    "assignment-in-condition": {"enabled": true, "severity": "warning"},
+    "empty-body":          {"enabled": true, "severity": "warning"},
+    "unused-variable":     {"enabled": true, "severity": "warning"},
+    "unused-parameter":    {"enabled": true, "severity": "info"},
+    "unused-function":     {"enabled": true, "severity": "warning"},
+    "shadowed-variable":   {"enabled": true, "severity": "warning"},
+    "const-index-out-of-bounds": {"enabled": true, "severity": "error"},
+    "unreachable-code":    {"enabled": true, "severity": "warning"},
+    "missing-return":      {"enabled": true, "severity": "error"},
+    "uninitialized-variable": {"enabled": true, "severity": "error"},
+    "dead-store":          {"enabled": true, "severity": "warning"},
+    "high-complexity":     {"enabled": true, "severity": "warning", "max_complexity": 10}
+  }
+}

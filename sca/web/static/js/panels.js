@@ -1,14 +1,24 @@
 /**
- * Panels and Results View Module (Tabs, Output, Diagnostics, Filters).
+ * Panels and Results View Module (Tabs, Output, Recommendations, Score, Metrics).
  */
 
 import { jumpToLine } from "./editor.js";
+import { renderDiffPreview } from "./diff.js";
 
 let currentDiagnostics = [];
+let currentRecommendations = [];
+let currentScore = null;
+let currentMetrics = [];
 let currentFilter = "all";
 let currentSource = "";
 
-export function initPanels() {
+let applyFixHandler = null;
+let applyAllSafeHandler = null;
+
+export function initPanels(onApplyFix, onApplyAllSafe) {
+  applyFixHandler = onApplyFix;
+  applyAllSafeHandler = onApplyAllSafe;
+
   const tabs = document.querySelectorAll(".tab-btn");
   tabs.forEach(tab => {
     tab.addEventListener("click", () => {
@@ -30,7 +40,6 @@ export function initPanels() {
 }
 
 export function switchTab(tabId) {
-  // Update tab buttons
   document.querySelectorAll(".tab-btn").forEach(btn => {
     if (btn.getAttribute("data-tab") === tabId) {
       btn.classList.add("active");
@@ -41,7 +50,6 @@ export function switchTab(tabId) {
     }
   });
 
-  // Update panels
   document.querySelectorAll(".tab-panel").forEach(panel => {
     if (panel.id === `panel-${tabId}`) {
       panel.classList.add("active");
@@ -53,22 +61,32 @@ export function switchTab(tabId) {
 
 export function renderResults(result, sourceCode) {
   currentSource = sourceCode || "";
-  const lines = currentSource.splitlines ? currentSource.splitlines() : currentSource.split("\n");
 
-  // Check for syntax errors
-  const container = document.getElementById("output-diagnostics-container");
-  if (!container) return;
-
+  // 1. Output & Diagnostics
+  const outputContainer = document.getElementById("output-diagnostics-container");
   if (result.parse_errors && result.parse_errors.length > 0) {
     currentDiagnostics = [];
+    currentRecommendations = [];
+    currentScore = null;
+    currentMetrics = [];
     updateTabBadges(result);
     renderSyntaxErrors(result.parse_errors);
+    renderRecommendationsEmpty("Cannot generate recommendations due to syntax errors.");
+    renderScoreEmpty("Quality score unavailable due to syntax errors.");
+    renderMetricsEmpty("Metrics unavailable due to syntax errors.");
     return;
   }
 
   currentDiagnostics = result.diagnostics || [];
+  currentRecommendations = result.recommendations || [];
+  currentScore = result.score;
+  currentMetrics = result.metrics || [];
+
   updateTabBadges(result);
   renderDiagnosticsList();
+  renderRecommendations(currentRecommendations, currentScore, result.projected_score);
+  renderScore(currentScore, result.projected_score);
+  renderMetrics(currentMetrics);
 }
 
 function updateTabBadges(result) {
@@ -82,11 +100,9 @@ function updateTabBadges(result) {
 
   const recBadge = document.getElementById("badge-recommendations");
   if (recBadge) {
-    const recCount = result.recommendations ? result.recommendations.length : 0;
-    recBadge.textContent = recCount;
+    recBadge.textContent = (result.recommendations ? result.recommendations.length : 0);
   }
 
-  // Update filter chips counts
   const summary = result.summary || { error: 0, warning: 0, info: 0 };
   const totalDiags = (result.diagnostics || []).length;
 
@@ -141,7 +157,7 @@ function renderDiagnosticsList() {
     } else {
       container.innerHTML = `
         <div class="empty-state">
-          <p style="font-size: 13px;">No diagnostics matching the filter "${currentFilter}".</p>
+          <p style="font-size: 13px;">No diagnostics matching filter "${currentFilter}".</p>
         </div>`;
     }
     return;
@@ -169,7 +185,6 @@ function renderDiagnosticsList() {
 
   container.innerHTML = html;
 
-  // Add click handlers to cards
   container.querySelectorAll(".diag-card").forEach(card => {
     card.addEventListener("click", () => {
       const line = parseInt(card.getAttribute("data-line"), 10);
@@ -177,6 +192,325 @@ function renderDiagnosticsList() {
       jumpToLine(line, col);
     });
   });
+}
+
+/* ==========================================================================
+   Recommendations Renderer (W4)
+   ========================================================================== */
+
+function renderRecommendations(recommendations, scoreObj, projectedScore) {
+  const container = document.getElementById("recommendations-container");
+  if (!container) return;
+
+  if (!recommendations || recommendations.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <h3 style="font-weight: 600;">Code is in Great Shape</h3>
+        <p style="font-size: 13px;">No active recommendations. All 18 analyzer rules are satisfied.</p>
+      </div>`;
+    return;
+  }
+
+  const lines = currentSource.split("\n");
+
+  // Collect safe fixes with valid edits
+  const safeRecs = recommendations.filter(r => r.safety === "safe" && r.edits && r.edits.length > 0);
+  const currentVal = scoreObj ? scoreObj.value : 100;
+  const projectedVal = projectedScore !== undefined ? projectedScore : currentVal;
+
+  let html = "";
+
+  // Header Banner with "Apply all safe fixes"
+  if (safeRecs.length > 0 && projectedVal > currentVal) {
+    html += `
+      <div class="rec-global-banner">
+        <div class="rec-global-info">
+          <span class="rec-global-title">Applying all safe fixes would raise your score from ${currentVal} to ${projectedVal} (+${projectedVal - currentVal} pts)</span>
+          <span class="rec-global-sub">Harmless automated fixes with zero behavioral impact.</span>
+        </div>
+        <button id="btn-apply-all-safe" class="btn-apply-all">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Apply all safe fixes (${safeRecs.length})</span>
+        </button>
+      </div>
+    `;
+  }
+
+  html += `<div class="rec-cards-list">`;
+
+  for (const rec of recommendations) {
+    const isSafe = rec.safety === "safe";
+    const isReview = rec.safety === "review";
+    const hasEdits = rec.edits && rec.edits.length > 0;
+
+    // Check if edits are stale against current source
+    let isStale = false;
+    if (hasEdits) {
+      for (const edit of rec.edits) {
+        if (edit.expected_old && edit.expected_old.length > 0) {
+          const actualLines = lines.slice(edit.line_start - 1, edit.line_end);
+          if (JSON.stringify(actualLines) !== JSON.stringify(edit.expected_old)) {
+            isStale = true;
+            break;
+          }
+        }
+      }
+    }
+
+    const safetyClass = `safety-${rec.safety}`;
+    const safetyLabel = isSafe ? "Safe fix" : (isReview ? "Review fix" : "Manual advice");
+
+    html += `
+      <div class="rec-card ${safetyClass}" data-id="${rec.id}">
+        <div class="rec-card-header">
+          <div class="rec-card-title-group">
+            <span class="rec-safety-badge ${safetyClass}">${safetyLabel}</span>
+            <span class="rec-rule-badge">${escapeHtml(rec.rule_id)}</span>
+            <span class="rec-card-loc">Line ${rec.line}</span>
+          </div>
+          <span class="rec-gain-badge">+${rec.score_gain} pts</span>
+        </div>
+
+        <h4 class="rec-title">${escapeHtml(rec.title)}</h4>
+        <p class="rec-explanation">${escapeHtml(rec.explanation)}</p>
+
+        ${hasEdits ? renderDiffPreview(rec.edits) : ""}
+
+        <div class="rec-card-actions">
+          ${hasEdits ? `
+            <button class="btn-apply-fix" data-rec-id="${rec.id}" ${isStale ? "disabled title='Code in editor has changed'" : ""}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>${isStale ? "Stale (code changed)" : "Apply fix"}</span>
+            </button>
+          ` : `
+            <span class="rec-manual-note">Manual guidance — apply change directly in editor</span>
+          `}
+          <button class="btn-jump-loc" data-line="${rec.line}" data-col="${rec.col}">
+            Jump to line
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+
+  // Event handlers
+  const applyAllBtn = document.getElementById("btn-apply-all-safe");
+  if (applyAllBtn && applyAllSafeHandler) {
+    applyAllBtn.addEventListener("click", () => {
+      // Gather all edits from safeRecs
+      const allEdits = [];
+      for (const r of safeRecs) {
+        allEdits.push(...r.edits);
+      }
+      applyAllSafeHandler(allEdits);
+    });
+  }
+
+  container.querySelectorAll(".btn-apply-fix").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const recId = btn.getAttribute("data-rec-id");
+      const rec = recommendations.find(r => r.id === recId);
+      if (rec && applyFixHandler) {
+        applyFixHandler(rec);
+      }
+    });
+  });
+
+  container.querySelectorAll(".btn-jump-loc").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const line = parseInt(btn.getAttribute("data-line"), 10);
+      const col = parseInt(btn.getAttribute("data-col"), 10);
+      jumpToLine(line, col);
+    });
+  });
+}
+
+function renderRecommendationsEmpty(msg) {
+  const container = document.getElementById("recommendations-container");
+  if (container) {
+    container.innerHTML = `<div class="empty-state"><p style="font-size:13px;">${msg}</p></div>`;
+  }
+}
+
+/* ==========================================================================
+   Score Renderer (W4)
+   ========================================================================== */
+
+function renderScore(scoreObj, projectedScore) {
+  const container = document.getElementById("score-container");
+  if (!container) return;
+
+  if (!scoreObj) {
+    renderScoreEmpty("Run analysis to view code quality score.");
+    return;
+  }
+
+  const score = scoreObj.value;
+  const grade = scoreObj.grade;
+  const issuesCount = scoreObj.total_issues;
+  const deductions = scoreObj.deductions || {};
+
+  // Grade color
+  let gradeColor = "#2ea043"; // A
+  if (score < 60) gradeColor = "#f85149"; // F
+  else if (score < 70) gradeColor = "#db6d28"; // D
+  else if (score < 80) gradeColor = "#d29922"; // C
+  else if (score < 90) gradeColor = "#388bfd"; // B
+
+  // SVG Gauge calculations
+  const radius = 65;
+  const circumference = 2 * Math.PI * radius; // ~408.4
+  const offset = circumference - (score / 100) * circumference;
+
+  let html = `
+    <div class="score-card-hero">
+      <div class="score-gauge-wrapper">
+        <svg class="score-gauge" width="160" height="160" viewBox="0 0 160 160">
+          <circle cx="80" cy="80" r="${radius}" fill="none" stroke="var(--border-color)" stroke-width="12"></circle>
+          <circle cx="80" cy="80" r="${radius}" fill="none" stroke="${gradeColor}" stroke-width="12"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+            stroke-linecap="round" transform="rotate(-90 80 80)"
+            style="transition: stroke-dashoffset 0.8s ease;"></circle>
+          <text x="80" y="76" text-anchor="middle" font-size="34" font-weight="700" fill="var(--text-main)" font-family="var(--font-sans)">${score}</text>
+          <text x="80" y="98" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-secondary)">/ 100</text>
+        </svg>
+      </div>
+      <div class="score-summary-details">
+        <div class="grade-pill" style="background-color: ${gradeColor}22; border: 1px solid ${gradeColor}55; color: ${gradeColor};">
+          Grade: ${escapeHtml(grade)}
+        </div>
+        <div class="score-stat-line">
+          <span>Total Issues Found:</span>
+          <strong>${issuesCount}</strong>
+        </div>
+        ${(projectedScore !== undefined && projectedScore > score) ? `
+          <div class="projected-score-box">
+            <span>Projected Score:</span>
+            <strong>${projectedScore}/100</strong>
+            <span class="projected-gain">(+${projectedScore - score} pts with safe fixes)</span>
+          </div>
+        ` : ""}
+      </div>
+    </div>
+  `;
+
+  // Deductions Breakdown
+  html += `
+    <div class="deductions-section">
+      <h4 class="section-title">Score Deductions by Rule</h4>
+  `;
+
+  const deductionEntries = Object.entries(deductions);
+  if (deductionEntries.length === 0) {
+    html += `
+      <div class="perfect-code-callout">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2ea043" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <span>Perfect code! No score deductions.</span>
+      </div>
+    `;
+  } else {
+    // Find max penalty for proportional bar scaling
+    const maxPenalty = Math.max(...deductionEntries.map(e => e[1]));
+    html += `<div class="deduction-bars-list">`;
+    for (const [ruleId, penalty] of deductionEntries) {
+      const barPct = Math.round((penalty / maxPenalty) * 100);
+      html += `
+        <div class="deduction-row">
+          <div class="deduction-label">
+            <span class="deduction-rule">${escapeHtml(ruleId)}</span>
+            <span class="deduction-penalty">-${penalty} pts</span>
+          </div>
+          <div class="deduction-track">
+            <div class="deduction-fill" style="width: ${barPct}%;"></div>
+          </div>
+        </div>
+      `;
+    }
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function renderScoreEmpty(msg) {
+  const container = document.getElementById("score-container");
+  if (container) {
+    container.innerHTML = `<div class="empty-state"><p style="font-size:13px;">${msg}</p></div>`;
+  }
+}
+
+/* ==========================================================================
+   Metrics Renderer (W4)
+   ========================================================================== */
+
+function renderMetrics(metrics) {
+  const container = document.getElementById("metrics-container");
+  if (!container) return;
+
+  if (!metrics || metrics.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <p style="font-size: 13px;">No function definitions detected in source file.</p>
+      </div>`;
+    return;
+  }
+
+  let html = `
+    <div class="metrics-wrapper">
+      <div class="metrics-legend">
+        <span>Limits: LOC &le; 50 &bull; Params &le; 5 &bull; Nesting &le; 4 &bull; Complexity &le; 10</span>
+      </div>
+      <div class="table-responsive">
+        <table class="metrics-table">
+          <thead>
+            <tr>
+              <th>Function</th>
+              <th>LOC</th>
+              <th>Params</th>
+              <th>Max Nesting</th>
+              <th>Cyclomatic Complexity</th>
+            </tr>
+          </thead>
+          <tbody>
+  `;
+
+  for (const m of metrics) {
+    const locWarn = m.loc > 50;
+    const paramsWarn = m.params > 5;
+    const nestingWarn = m.max_nesting > 4;
+    const complexityWarn = m.cyclomatic > 10;
+
+    html += `
+      <tr>
+        <td class="font-mono" style="font-weight: 600;">${escapeHtml(m.function)}</td>
+        <td><span class="metric-val ${locWarn ? 'val-warn' : ''}">${m.loc}${locWarn ? ' (!)' : ''}</span></td>
+        <td><span class="metric-val ${paramsWarn ? 'val-warn' : ''}">${m.params}${paramsWarn ? ' (!)' : ''}</span></td>
+        <td><span class="metric-val ${nestingWarn ? 'val-warn' : ''}">${m.max_nesting}${nestingWarn ? ' (!)' : ''}</span></td>
+        <td><span class="metric-val ${complexityWarn ? 'val-warn' : ''}">${m.cyclomatic}${complexityWarn ? ' (!)' : ''}</span></td>
+      </tr>
+    `;
+  }
+
+  html += `
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+function renderMetricsEmpty(msg) {
+  const container = document.getElementById("metrics-container");
+  if (container) {
+    container.innerHTML = `<div class="empty-state"><p style="font-size:13px;">${msg}</p></div>`;
+  }
 }
 
 function escapeHtml(str) {

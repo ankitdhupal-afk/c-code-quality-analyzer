@@ -14,8 +14,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 1. Initialize Themes
   initTheme();
 
-  // 2. Initialize Panels & Tabs
-  initPanels();
+  // 2. Initialize Panels & Tabs with Fix Handlers
+  initPanels(handleApplyFix, handleApplyAllSafe);
 
   // 3. Initialize CodeMirror Editor
   initEditor(handleRun, handleCodeChange);
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   handleRun();
 });
 
-async function handleRun() {
+export async function handleRun() {
   if (isRunning) return;
   const runBtn = document.getElementById("btn-run");
   const parserStatus = document.getElementById("parser-status");
@@ -98,6 +98,59 @@ function handleCodeChange() {
   }
 }
 
+function handleApplyFix(rec) {
+  if (!rec.edits || rec.edits.length === 0) return;
+  try {
+    const currentCode = getCode();
+    const newCode = applyClientEdits(currentCode, rec.edits);
+    setCode(newCode);
+    handleRun();
+  } catch (err) {
+    showErrorBanner(`Cannot apply fix: ${err.message}`);
+  }
+}
+
+function handleApplyAllSafe(edits) {
+  if (!edits || edits.length === 0) return;
+  try {
+    const currentCode = getCode();
+    const newCode = applyClientEdits(currentCode, edits);
+    setCode(newCode);
+    handleRun();
+  } catch (err) {
+    showErrorBanner(`Cannot apply all safe fixes: ${err.message}`);
+  }
+}
+
+function applyClientEdits(source, edits) {
+  const lines = source.split("\n");
+  const normEdits = [...edits].sort((a, b) => b.line_start - a.line_start);
+
+  for (const edit of normEdits) {
+    const lineStart = edit.line_start;
+    const lineEnd = edit.line_end;
+    const expectedOld = edit.expected_old || [];
+    const newLines = edit.new || [];
+
+    if (expectedOld.length > 0) {
+      const actualOld = lines.slice(lineStart - 1, lineEnd);
+      if (JSON.stringify(actualOld) !== JSON.stringify(expectedOld)) {
+        throw new Error(`Lines ${lineStart}..${lineEnd} have changed since analysis.`);
+      }
+    }
+
+    if (lineEnd === lineStart - 1) {
+      // Insertion before lineStart
+      lines.splice(lineStart - 1, 0, ...newLines);
+    } else {
+      // Replacement or deletion
+      lines.splice(lineStart - 1, lineEnd - lineStart + 1, ...newLines);
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function initSplitPane() {
   const resizer = document.getElementById("resizer");
   const paneLeft = document.getElementById("pane-editor");
@@ -106,7 +159,6 @@ function initSplitPane() {
 
   if (!resizer || !paneLeft || !paneRight || !workspace) return;
 
-  // Restore saved split position
   try {
     const savedFlex = localStorage.getItem("sca_split_ratio");
     if (savedFlex) {
@@ -153,13 +205,11 @@ function initSplitPane() {
 }
 
 function initTopBarControls() {
-  // Run Button
   const runBtn = document.getElementById("btn-run");
   if (runBtn) {
     runBtn.addEventListener("click", handleRun);
   }
 
-  // Upload Button
   const uploadBtn = document.getElementById("btn-upload");
   const fileInput = document.getElementById("file-upload-input");
   if (uploadBtn && fileInput) {
@@ -177,7 +227,6 @@ function initTopBarControls() {
     });
   }
 
-  // Download Button
   const downloadBtn = document.getElementById("btn-download");
   if (downloadBtn) {
     downloadBtn.addEventListener("click", () => {
@@ -194,7 +243,6 @@ function initTopBarControls() {
     });
   }
 
-  // Reset Button
   const resetBtn = document.getElementById("btn-reset");
   if (resetBtn) {
     resetBtn.addEventListener("click", () => {
@@ -235,9 +283,7 @@ async function loadExamplesDropdown() {
         }
       });
     }
-  } catch (e) {
-    // If examples fail to fetch, silent fallback
-  }
+  } catch (e) {}
 }
 
 function showErrorBanner(message) {

@@ -1331,3 +1331,35 @@ body {
   color: var(--text-secondary);
   font-style: italic;
 }
+
+/* ==========================================================================
+   Accessibility Pass (W7) - WCAG AA & Reduced Motion
+   ========================================================================== */
+
+:focus-visible {
+  outline: 2px solid #58a6ff !important;
+  outline-offset: 2px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Ensure severity icons always have adjacent text for screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

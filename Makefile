@@ -38,7 +38,7 @@ build/cparse-asan: $(ASAN_OBJS)
 	$(CC) $(CFLAGS) $(ASAN_FLAGS) $(LDFLAGS) -o $@ $^
 
 test: build
-	python3 -m pytest tests/
+	@if [ -d .venv ]; then .venv/bin/python3 -m pytest tests/; else python3 -m pytest tests/; fi
 
 clean:
 	rm -rf build

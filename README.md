@@ -14,10 +14,11 @@ Two components:
 - Flow checks (CFG + dataflow): unreachable code, missing return, uninitialized use,
   dead stores, cyclomatic complexity
 - Text and JSON output, config file, inline suppression, CI-friendly exit codes
+- Interactive Web UI: offline-first browser IDE with automated fix recommendations, score gauge, and AST viewer
 
 ## Setup (Windows + WSL)
 See `docs/BUILD_AND_RUN.md`. Short version, inside a WSL terminal:
-```
+```bash
 sudo apt update && sudo apt install -y build-essential flex bison make python3 python3-venv python3-pip
 bash scripts/check_env.sh
 make build
@@ -25,14 +26,34 @@ make test
 ```
 
 ## Usage
-```
+```bash
 sca analyze <file.c> [--rule ID ...] [--disable ID ...] [--fail-on error,warning]
+sca score <file.c>                 # compute quality score (0-100) and grade
+sca metrics <file.c>               # compute per-function code metrics
 sca ast <file.c>                   # dump the AST
 sca tokens <file.c>                # dump tokens (from cparse --tokens)
 sca parse <file.c>                 # Parse and print python AST
 sca cfg <file.c> <func>            # dump a CFG (debugging)
 sca liveness <file.c> <func>       # print liveness IN/OUT per block
+sca web [--host HOST] [--port PORT] # launch interactive web application
 ```
+
+## Web UI
+Install the optional web dependencies and launch the server:
+```bash
+pip install -e ".[web]"
+sca web
+```
+Then navigate to `http://127.0.0.1:8000` in your browser.
+
+Key Web Features:
+- **Interactive Editor:** C99 code editing powered by offline vendored CodeMirror with inline gutter markers and error highlights.
+- **One-Click Recommendations:** Automated fix engine with side-by-side diff previews, single fix application, and "Apply all safe fixes".
+- **Quality Score & Metrics:** Circular SVG score gauge (0–100), letter grade, rule deduction bars, and function metrics table.
+- **AST Explorer:** Interactive collapsible JSON syntax tree linked to editor source ranges.
+- **REST API:** Headless JSON endpoints (`/api/analyze`, `/api/rules`, `/api/examples`, `/api/ast`, `/api/cfg`).
+
+See [`docs/WEB_APP.md`](docs/WEB_APP.md) for full documentation, API reference, and manual QA checklist.
 
 ## Exit codes
 - 0: no findings at or above `--fail-on` severity
@@ -41,4 +62,4 @@ sca liveness <file.c> <func>       # print liveness IN/OUT per block
 
 ## Docs
 `docs/`: spec, C subset and grammar, JSON AST schema, architecture, build/run, rules,
-testing, task plan.
+testing, web application guide (`docs/WEB_APP.md`), task plan.

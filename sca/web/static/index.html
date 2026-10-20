@@ -15,17 +15,17 @@
 <body>
 
   <!-- Top Bar Navigation -->
-  <header class="topbar">
+  <header class="topbar" role="banner">
     <div class="topbar-left">
       <div class="brand">
-        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
           <path d="M2 17l10 5 10-5"></path>
           <path d="M2 12l10 5 10-5"></path>
         </svg>
         <span>SCA Analyzer</span>
       </div>
-      <span class="lang-chip">C</span>
+      <span class="lang-chip" title="C99 Source Analysis">C</span>
     </div>
 
     <div class="topbar-right">
@@ -33,28 +33,28 @@
         <option value="" disabled selected>Examples...</option>
       </select>
 
-      <button id="btn-upload" class="btn-icon" title="Upload C Source File" aria-label="Upload .c File">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+      <button id="btn-upload" class="btn-icon" title="Upload C Source File" aria-label="Upload C source file from disk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         <span>Upload</span>
       </button>
-      <input type="file" id="file-upload-input" accept=".c,.h" style="display: none;">
+      <input type="file" id="file-upload-input" accept=".c,.h" style="display: none;" aria-hidden="true">
 
-      <button id="btn-download" class="btn-icon" title="Download C Source Code" aria-label="Download Code">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      <button id="btn-download" class="btn-icon" title="Download C Source Code as main.c" aria-label="Download current code as main.c">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         <span>Download</span>
       </button>
 
-      <button id="btn-reset" class="btn-icon" title="Reset Code to Template" aria-label="Reset Code">
+      <button id="btn-reset" class="btn-icon" title="Reset Code to Default Template" aria-label="Reset editor to default code template">
         <span>Reset</span>
       </button>
 
-      <button id="btn-theme" class="btn-icon" title="Toggle Theme" aria-label="Toggle Theme">
-        <span class="theme-icon">☀️</span>
+      <button id="btn-theme" class="btn-icon" title="Toggle Dark/Light Theme" aria-label="Toggle between dark and light theme">
+        <span class="theme-icon" aria-hidden="true">☀️</span>
       </button>
 
-      <button id="btn-run" class="btn-run" aria-label="Run Code Analysis">
-        <span class="spinner"></span>
-        <svg class="run-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <button id="btn-run" class="btn-run" aria-label="Run Code Quality Analysis (Ctrl+Enter)">
+        <span class="spinner" aria-hidden="true"></span>
+        <svg class="run-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <polygon points="5 3 19 12 5 21 5 3"></polygon>
         </svg>
         <span>Run</span>
@@ -64,13 +64,13 @@
   </header>
 
   <!-- Main Split Workspace -->
-  <main class="workspace">
+  <main class="workspace" role="main">
 
     <!-- Left Editor Pane -->
-    <section class="pane pane-editor" id="pane-editor">
+    <section class="pane pane-editor" id="pane-editor" aria-label="Code Editor">
       <div class="editor-header">
         <div class="file-tab">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>main.c</span>
         </div>
         <span class="stale-badge" id="stale-badge" title="Code modified since last run">Results out of date</span>
@@ -80,7 +80,7 @@
         <textarea id="code-editor" aria-label="C Source Code Editor"></textarea>
       </div>
 
-      <footer class="editor-statusbar">
+      <footer class="editor-statusbar" role="status">
         <div class="statusbar-left">
           <span id="cursor-pos">Ln 1, Col 1</span>
           <span>C (C99 Subset)</span>
@@ -93,92 +93,95 @@
     </section>
 
     <!-- Draggable Resizer Bar -->
-    <div class="resizer" id="resizer" title="Drag to resize panes"></div>
+    <div class="resizer" id="resizer" title="Drag horizontally to resize panes" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Pane divider"></div>
 
     <!-- Right Results Pane -->
-    <section class="pane pane-results" id="pane-results">
-      <nav class="tabs-nav" role="tablist">
-        <button class="tab-btn active" data-tab="output" role="tab" aria-selected="true">
+    <section class="pane pane-results" id="pane-results" aria-label="Analysis Results">
+      <nav class="tabs-nav" role="tablist" aria-label="Analysis Results Tabs">
+        <button class="tab-btn active" data-tab="output" role="tab" aria-selected="true" id="tab-output">
           <span>Output</span>
           <span class="badge" id="badge-output">0</span>
         </button>
-        <button class="tab-btn" data-tab="recommendations" role="tab" aria-selected="false">
+        <button class="tab-btn" data-tab="recommendations" role="tab" aria-selected="false" id="tab-recommendations">
           <span>Recommendations</span>
           <span class="badge" id="badge-recommendations">0</span>
         </button>
-        <button class="tab-btn" data-tab="score" role="tab" aria-selected="false">
+        <button class="tab-btn" data-tab="score" role="tab" aria-selected="false" id="tab-score">
           <span>Score</span>
         </button>
-        <button class="tab-btn" data-tab="metrics" role="tab" aria-selected="false">
+        <button class="tab-btn" data-tab="metrics" role="tab" aria-selected="false" id="tab-metrics">
           <span>Metrics</span>
         </button>
-        <button class="tab-btn" data-tab="ast" role="tab" aria-selected="false">
+        <button class="tab-btn" data-tab="ast" role="tab" aria-selected="false" id="tab-ast">
           <span>AST</span>
         </button>
-        <button class="tab-btn" data-tab="cfg" role="tab" aria-selected="false">
+        <button class="tab-btn" data-tab="cfg" role="tab" aria-selected="false" id="tab-cfg">
           <span>CFG</span>
         </button>
       </nav>
 
       <!-- Output Panel (Default) -->
-      <div class="tab-panel active" id="panel-output" role="tabpanel">
-        <div class="filter-bar">
-          <button class="chip-filter active" data-filter="all">
+      <div class="tab-panel active" id="panel-output" role="tabpanel" aria-labelledby="tab-output">
+        <div class="filter-bar" role="toolbar" aria-label="Filter diagnostics by severity">
+          <button class="chip-filter active" data-filter="all" aria-label="Show all issues">
             All (<span id="count-filter-all">0</span>)
           </button>
-          <button class="chip-filter chip-error" data-filter="error">
+          <button class="chip-filter chip-error" data-filter="error" aria-label="Filter error issues">
             Errors (<span id="count-filter-error">0</span>)
           </button>
-          <button class="chip-filter chip-warning" data-filter="warning">
+          <button class="chip-filter chip-warning" data-filter="warning" aria-label="Filter warning issues">
             Warnings (<span id="count-filter-warning">0</span>)
           </button>
-          <button class="chip-filter chip-info" data-filter="info">
+          <button class="chip-filter chip-info" data-filter="info" aria-label="Filter info issues">
             Info (<span id="count-filter-info">0</span>)
           </button>
         </div>
 
         <div id="output-diagnostics-container">
-          <!-- Diagnostics or Syntax errors rendered here -->
           <div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
             <h3 style="font-weight: 600;">Ready to Analyze</h3>
             <p style="font-size: 13px;">Click <strong>Run</strong> (Ctrl+Enter) to analyze your C program.</p>
           </div>
         </div>
       </div>
 
-      <!-- Recommendations Panel Placeholder (W4) -->
-      <div class="tab-panel" id="panel-recommendations" role="tabpanel">
+      <!-- Recommendations Panel -->
+      <div class="tab-panel" id="panel-recommendations" role="tabpanel" aria-labelledby="tab-recommendations">
         <div id="recommendations-container">
           <p style="color: var(--text-secondary); font-size: 13px;">Recommendations will appear here after running analysis.</p>
         </div>
       </div>
 
-      <!-- Score Panel Placeholder (W4) -->
-      <div class="tab-panel" id="panel-score" role="tabpanel">
+      <!-- Score Panel -->
+      <div class="tab-panel" id="panel-score" role="tabpanel" aria-labelledby="tab-score">
         <div id="score-container">
           <p style="color: var(--text-secondary); font-size: 13px;">Quality score gauge will appear here after running analysis.</p>
         </div>
       </div>
 
-      <!-- Metrics Panel Placeholder (W4) -->
-      <div class="tab-panel" id="panel-metrics" role="tabpanel">
+      <!-- Metrics Panel -->
+      <div class="tab-panel" id="panel-metrics" role="tabpanel" aria-labelledby="tab-metrics">
         <div id="metrics-container">
           <p style="color: var(--text-secondary); font-size: 13px;">Per-function code metrics will appear here after running analysis.</p>
         </div>
       </div>
 
-      <!-- AST Panel Placeholder (W5) -->
-      <div class="tab-panel" id="panel-ast" role="tabpanel">
+      <!-- AST Panel -->
+      <div class="tab-panel" id="panel-ast" role="tabpanel" aria-labelledby="tab-ast">
         <div id="ast-container">
           <p style="color: var(--text-secondary); font-size: 13px;">Collapsible JSON AST will appear here after running analysis.</p>
         </div>
       </div>
 
-      <!-- CFG Panel Placeholder (W6) -->
-      <div class="tab-panel" id="panel-cfg" role="tabpanel">
+      <!-- CFG Panel -->
+      <div class="tab-panel" id="panel-cfg" role="tabpanel" aria-labelledby="tab-cfg">
         <div id="cfg-container">
-          <p style="color: var(--text-secondary); font-size: 13px;">Control flow graph diagram will appear here.</p>
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <h3 style="font-weight: 600;">Control Flow Graph</h3>
+            <p style="font-size: 13px; max-width: 380px;">Control flow graphs can be inspected via the CLI using <code>sca cfg &lt;file.c&gt; &lt;func&gt;</code> or queried via <code>POST /api/cfg</code>.</p>
+          </div>
         </div>
       </div>
     </section>

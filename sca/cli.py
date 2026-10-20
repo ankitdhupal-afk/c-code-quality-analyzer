@@ -36,13 +36,17 @@ def main():
     parser_analyze.add_argument("--disable", action="append", help="Disable these rules")
     parser_analyze.add_argument("--fail-on", default="error,warning", help="Comma-separated severities to exit 1 on")
 
+    parser_web = subparsers.add_parser("web", help="Start the web UI server")
+    parser_web.add_argument("--host", default="127.0.0.1", help="Host address to bind (default: 127.0.0.1)")
+    parser_web.add_argument("--port", type=int, default=8000, help="Port to listen on (default: 8000)")
+    parser_web.add_argument("--debug", action="store_true", help="Enable debug mode")
+
     args = parser.parse_args()
 
     if args.command == "tokens":
         try:
             data = run_cparse_tokens(args.file)
         except Exception:
-            # Fallback for compatibility
             data = run_cparse(args.file)
         print(json.dumps(data, indent=2))
 
@@ -158,6 +162,12 @@ def main():
 
         if out:
             sys.exit(1)
+
+    elif args.command == "web":
+        from sca.web.app import create_app
+        print(f"Starting SCA Web Server at http://{args.host}:{args.port}")
+        app = create_app()
+        app.run(host=args.host, port=args.port, debug=args.debug)
 
     else:
         parser.print_help()

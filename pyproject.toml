@@ -14,6 +14,9 @@ dependencies = []
 dev = [
     "pytest",
 ]
+web = [
+    "flask>=3.0.0",
+]
 
 [project.scripts]
 sca = "sca.cli:main"

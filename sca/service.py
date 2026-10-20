@@ -14,6 +14,7 @@ from sca.ast import nodes
 from sca.rules.base import Issue
 from sca.rules.registry import get_all_rules
 from sca.scoring import compute_score, Score, RULE_SEVERITIES
+from sca.recommendations import build_recommendations, apply_edits
 
 MAX_SOURCE_SIZE = 100 * 1024  # 100 KB limit
 
@@ -268,9 +269,13 @@ def analyze_source(
         # Compute score
         score = compute_score(filtered_issues)
 
-        # Recommendations placeholder (populated in phase W1)
-        recommendations: List[Dict[str, Any]] = []
-        projected_score = score.value
+        # Build recommendations
+        recs = build_recommendations(diagnostics, code, ast_items=ast.items if ast else None)
+        recommendations = [r.to_dict() for r in recs]
+
+        # Calculate projected score if all safe fixes were applied
+        safe_gain = sum(r.score_gain for r in recs if r.safety == "safe" and r.edits)
+        projected_score = min(100, score.value + safe_gain)
 
         elapsed = round((time.time() - start_time) * 1000, 2)
 

@@ -162,4 +162,23 @@ def test_404_error_formatting(client):
 def test_index_page(client):
     res = client.get("/")
     assert res.status_code == 200
-    assert "SCA Analyzer" in res.get_data(as_text=True)
+    html = res.get_data(as_text=True)
+    assert "SCA Analyzer" in html
+    assert "main.c" in html
+    assert "code-editor" in html
+
+def test_static_assets_served(client):
+    # CSS
+    res_css = client.get("/css/app.css")
+    assert res_css.status_code == 200
+    assert "text-main" in res_css.get_data(as_text=True)
+
+    # JS Modules
+    for js_path in ["/js/app.js", "/js/editor.js", "/js/panels.js", "/js/theme.js", "/js/api.js"]:
+        res_js = client.get(js_path)
+        assert res_js.status_code == 200
+
+    # Offline Vendored CodeMirror 5
+    res_cm = client.get("/vendor/codemirror/codemirror.js")
+    assert res_cm.status_code == 200
+    assert "CodeMirror" in res_cm.get_data(as_text=True)

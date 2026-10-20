@@ -1,9 +1,10 @@
 /**
- * Panels and Results View Module (Tabs, Output, Recommendations, Score, Metrics).
+ * Panels and Results View Module (Tabs, Output, Recommendations, Score, Metrics, AST).
  */
 
 import { jumpToLine } from "./editor.js";
 import { renderDiffPreview } from "./diff.js";
+import { renderAstTree } from "./ast_viewer.js";
 
 let currentDiagnostics = [];
 let currentRecommendations = [];
@@ -62,8 +63,6 @@ export function switchTab(tabId) {
 export function renderResults(result, sourceCode) {
   currentSource = sourceCode || "";
 
-  // 1. Output & Diagnostics
-  const outputContainer = document.getElementById("output-diagnostics-container");
   if (result.parse_errors && result.parse_errors.length > 0) {
     currentDiagnostics = [];
     currentRecommendations = [];
@@ -74,6 +73,7 @@ export function renderResults(result, sourceCode) {
     renderRecommendationsEmpty("Cannot generate recommendations due to syntax errors.");
     renderScoreEmpty("Quality score unavailable due to syntax errors.");
     renderMetricsEmpty("Metrics unavailable due to syntax errors.");
+    renderAstEmpty("AST unavailable due to syntax errors.");
     return;
   }
 
@@ -194,10 +194,6 @@ function renderDiagnosticsList() {
   });
 }
 
-/* ==========================================================================
-   Recommendations Renderer (W4)
-   ========================================================================== */
-
 function renderRecommendations(recommendations, scoreObj, projectedScore) {
   const container = document.getElementById("recommendations-container");
   if (!container) return;
@@ -213,15 +209,12 @@ function renderRecommendations(recommendations, scoreObj, projectedScore) {
   }
 
   const lines = currentSource.split("\n");
-
-  // Collect safe fixes with valid edits
   const safeRecs = recommendations.filter(r => r.safety === "safe" && r.edits && r.edits.length > 0);
   const currentVal = scoreObj ? scoreObj.value : 100;
   const projectedVal = projectedScore !== undefined ? projectedScore : currentVal;
 
   let html = "";
 
-  // Header Banner with "Apply all safe fixes"
   if (safeRecs.length > 0 && projectedVal > currentVal) {
     html += `
       <div class="rec-global-banner">
@@ -244,7 +237,6 @@ function renderRecommendations(recommendations, scoreObj, projectedScore) {
     const isReview = rec.safety === "review";
     const hasEdits = rec.edits && rec.edits.length > 0;
 
-    // Check if edits are stale against current source
     let isStale = false;
     if (hasEdits) {
       for (const edit of rec.edits) {
@@ -297,11 +289,9 @@ function renderRecommendations(recommendations, scoreObj, projectedScore) {
   html += `</div>`;
   container.innerHTML = html;
 
-  // Event handlers
   const applyAllBtn = document.getElementById("btn-apply-all-safe");
   if (applyAllBtn && applyAllSafeHandler) {
     applyAllBtn.addEventListener("click", () => {
-      // Gather all edits from safeRecs
       const allEdits = [];
       for (const r of safeRecs) {
         allEdits.push(...r.edits);
@@ -336,10 +326,6 @@ function renderRecommendationsEmpty(msg) {
   }
 }
 
-/* ==========================================================================
-   Score Renderer (W4)
-   ========================================================================== */
-
 function renderScore(scoreObj, projectedScore) {
   const container = document.getElementById("score-container");
   if (!container) return;
@@ -354,16 +340,14 @@ function renderScore(scoreObj, projectedScore) {
   const issuesCount = scoreObj.total_issues;
   const deductions = scoreObj.deductions || {};
 
-  // Grade color
-  let gradeColor = "#2ea043"; // A
-  if (score < 60) gradeColor = "#f85149"; // F
-  else if (score < 70) gradeColor = "#db6d28"; // D
-  else if (score < 80) gradeColor = "#d29922"; // C
-  else if (score < 90) gradeColor = "#388bfd"; // B
+  let gradeColor = "#2ea043";
+  if (score < 60) gradeColor = "#f85149";
+  else if (score < 70) gradeColor = "#db6d28";
+  else if (score < 80) gradeColor = "#d29922";
+  else if (score < 90) gradeColor = "#388bfd";
 
-  // SVG Gauge calculations
   const radius = 65;
-  const circumference = 2 * Math.PI * radius; // ~408.4
+  const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
   let html = `
@@ -396,10 +380,7 @@ function renderScore(scoreObj, projectedScore) {
         ` : ""}
       </div>
     </div>
-  `;
 
-  // Deductions Breakdown
-  html += `
     <div class="deductions-section">
       <h4 class="section-title">Score Deductions by Rule</h4>
   `;
@@ -413,7 +394,6 @@ function renderScore(scoreObj, projectedScore) {
       </div>
     `;
   } else {
-    // Find max penalty for proportional bar scaling
     const maxPenalty = Math.max(...deductionEntries.map(e => e[1]));
     html += `<div class="deduction-bars-list">`;
     for (const [ruleId, penalty] of deductionEntries) {
@@ -443,10 +423,6 @@ function renderScoreEmpty(msg) {
     container.innerHTML = `<div class="empty-state"><p style="font-size:13px;">${msg}</p></div>`;
   }
 }
-
-/* ==========================================================================
-   Metrics Renderer (W4)
-   ========================================================================== */
 
 function renderMetrics(metrics) {
   const container = document.getElementById("metrics-container");
@@ -508,6 +484,19 @@ function renderMetrics(metrics) {
 
 function renderMetricsEmpty(msg) {
   const container = document.getElementById("metrics-container");
+  if (container) {
+    container.innerHTML = `<div class="empty-state"><p style="font-size:13px;">${msg}</p></div>`;
+  }
+}
+
+export function renderAst(astData) {
+  const container = document.getElementById("ast-container");
+  if (!container) return;
+  renderAstTree(container, astData);
+}
+
+function renderAstEmpty(msg) {
+  const container = document.getElementById("ast-container");
   if (container) {
     container.innerHTML = `<div class="empty-state"><p style="font-size:13px;">${msg}</p></div>`;
   }

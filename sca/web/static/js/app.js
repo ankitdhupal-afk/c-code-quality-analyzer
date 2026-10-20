@@ -4,8 +4,8 @@
 
 import { initTheme } from "./theme.js";
 import { initEditor, getCode, setCode, resetCode, setDiagnosticsMarkers, clearMarkers } from "./editor.js";
-import { initPanels, renderResults } from "./panels.js";
-import { analyzeCode, fetchExamples, fetchExample } from "./api.js";
+import { initPanels, renderResults, renderAst } from "./panels.js";
+import { analyzeCode, fetchAst, fetchExamples, fetchExample } from "./api.js";
 
 let isRunning = false;
 let liveAnalysisTimer = null;
@@ -53,7 +53,10 @@ export async function handleRun() {
   if (parserStatus) parserStatus.textContent = "Analyzing...";
 
   try {
-    const result = await analyzeCode(code);
+    const [result, astResult] = await Promise.all([
+      analyzeCode(code),
+      fetchAst(code).catch(() => null)
+    ]);
 
     // Update status bar
     if (timeElapsed) timeElapsed.textContent = `${result.elapsed_ms || 0} ms`;
@@ -72,6 +75,11 @@ export async function handleRun() {
 
     // Render results panels
     renderResults(result, code);
+
+    // Render AST tree
+    if (astResult && astResult.ok && astResult.ast) {
+      renderAst(astResult.ast);
+    }
 
   } catch (err) {
     if (parserStatus) {
@@ -140,10 +148,8 @@ function applyClientEdits(source, edits) {
     }
 
     if (lineEnd === lineStart - 1) {
-      // Insertion before lineStart
       lines.splice(lineStart - 1, 0, ...newLines);
     } else {
-      // Replacement or deletion
       lines.splice(lineStart - 1, lineEnd - lineStart + 1, ...newLines);
     }
   }
